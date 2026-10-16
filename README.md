@@ -22,10 +22,17 @@ or on-prem) is meant to be pluggable.
 ProdSim is **source-available**. It is not OSI-approved open source.
 
 - The code is licensed under the
-  [PolyForm Noncommercial License 1.0.0](LICENSE): free to use, modify and contribute to
-  for non-commercial purposes (personal, research, education, non-profits, evaluation).
-- Any commercial use requires a paid license. See
-  [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
+  [PolyForm Noncommercial License 1.0.0](LICENSE), which permits use, changes and
+  distribution only for noncommercial purposes. In short, that covers personal use for
+  research, experiment and testing (for public knowledge, personal study, hobby projects
+  and similar) without any anticipated commercial application, and use by charitable
+  organizations, educational institutions, public research organizations, public safety
+  or health organizations, environmental protection organizations and government
+  institutions. The [LICENSE](LICENSE) text is authoritative; this summary grants no
+  rights.
+- Companies and other commercial users need a commercial license for any use, including
+  trials and internal tests. See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md) and
+  contact the maintainer.
 - Contributions require agreeing to the [CLA](CLA.md), so the project can keep offering
   both licenses.
 
