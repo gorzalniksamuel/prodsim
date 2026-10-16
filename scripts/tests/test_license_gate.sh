@@ -84,6 +84,44 @@ if [ "$RC" -eq 0 ]; then ok "wildcard allowlist entry passes LGPL family"; else 
 run_gate --node "$TMP/node-lgpl.json" --allowlist "$TMP/allow-wild.txt"
 if [ "$RC" -eq 1 ]; then ok "wildcard does not over-match"; else bad "wildcard over-match: rc=$RC out=$OUT"; fi
 
+# --- empty inputs must not pass silently ---
+echo '[]' > "$TMP/py-empty.json"
+echo '{}' > "$TMP/node-empty.json"
+run_gate --python "$TMP/py-empty.json" --allowlist "$TMP/empty-allow.txt"
+if [ "$RC" -eq 2 ]; then ok "empty python input is an error"; else bad "empty python input: rc=$RC out=$OUT"; fi
+run_gate --node "$TMP/node-empty.json" --allowlist "$TMP/empty-allow.txt"
+if [ "$RC" -eq 2 ]; then ok "empty node input is an error"; else bad "empty node input: rc=$RC out=$OUT"; fi
+run_gate --python "$TMP/py-clean.json" --node "$TMP/node-empty.json" --allowlist "$TMP/empty-allow.txt"
+if [ "$RC" -eq 2 ]; then ok "one empty input among several is an error"; else bad "mixed empty input: rc=$RC out=$OUT"; fi
+
+# --- node keys that are not name@version must not be dropped ---
+echo '{"react@19.0.0":{"licenses":"MIT"},"no-version-here":{"licenses":"MIT"}}' > "$TMP/node-badkey.json"
+run_gate --node "$TMP/node-badkey.json" --allowlist "$TMP/empty-allow.txt"
+if [ "$RC" -eq 1 ] && grep -q "no-version-here" <<<"$OUT" && grep -q "UNPARSEABLE" <<<"$OUT"; then
+  ok "unparseable node key fails and is named"
+else
+  bad "unparseable node key: rc=$RC out=$OUT"
+fi
+
+# --- Custom: licenses fail unless allowlisted ---
+echo '[{"Name":"oddlib","Version":"1","License":"Custom: https://example.com/license"}]' > "$TMP/py-custom.json"
+run_gate --python "$TMP/py-custom.json" --allowlist "$TMP/empty-allow.txt"
+if [ "$RC" -eq 1 ] && grep -q "oddlib" <<<"$OUT"; then ok "Custom: license fails"; else bad "Custom: license: rc=$RC out=$OUT"; fi
+printf 'oddlib  # reviewed custom license\n' > "$TMP/allow-custom.txt"
+run_gate --python "$TMP/py-custom.json" --allowlist "$TMP/allow-custom.txt"
+if [ "$RC" -eq 0 ]; then ok "allowlisted Custom: license passes"; else bad "allowlisted Custom: rc=$RC out=$OUT"; fi
+
+# --- wildcard entries must not be glob-expanded against the working directory ---
+mkdir -p "$TMP/globdir"
+touch "$TMP/globdir/lgplfam-decoy"
+echo '{"lgplfam-real@1.0.0":{"licenses":"LGPL-3.0-only"}}' > "$TMP/node-fam.json"
+printf 'lgplfam-*  # reviewed family\n' > "$TMP/allow-fam.txt"
+set +e
+OUT="$(cd "$TMP/globdir" && bash "$SCRIPT" --node "$TMP/node-fam.json" --allowlist "$TMP/allow-fam.txt" 2>&1)"
+RC=$?
+set -e
+if [ "$RC" -eq 0 ]; then ok "wildcard entry is not glob-expanded"; else bad "wildcard glob-expanded: rc=$RC out=$OUT"; fi
+
 run_gate
 if [ "$RC" -eq 2 ]; then ok "no inputs is a usage error"; else bad "no inputs: rc=$RC"; fi
 

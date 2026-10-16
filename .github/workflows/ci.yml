@@ -116,7 +116,7 @@ jobs:
       - name: Collect Python production licenses
         working-directory: backend
         run: |
-          uv run --no-dev --with pip-licenses pip-licenses \
+          uv run --no-dev --with 'pip-licenses==5.5.5' pip-licenses \
             --format=json --from=mixed --ignore-packages prodsim \
             > "$RUNNER_TEMP/python-licenses.json"
       - name: Collect web production licenses

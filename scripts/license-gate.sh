@@ -11,8 +11,10 @@
 # Rules:
 #   - GPL / AGPL (anything that is not LGPL): always fails; the allowlist cannot override it.
 #   - LGPL: fails unless the package is in the allowlist (reviewed LGPL packages only).
-#   - UNKNOWN / empty license: fails unless the package is in the allowlist.
-# Exit codes: 0 pass, 1 offending packages found, 2 usage error.
+#   - UNKNOWN / empty / "Custom:" license: fails unless the package is in the allowlist.
+#   - node keys that are not `name@version`: reported as license UNPARSEABLE (fails).
+# Exit codes: 0 pass, 1 offending packages found,
+#             2 usage error, unreadable input, or an input that lists zero packages.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -41,19 +43,21 @@ done
 # Normalise package names: lowercase, runs of [-_.] collapse to "-" (PEP 503 style).
 normalize() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[-_.]+/-/g'; }
 
-ALLOWED=" "
+ALLOWED=()
 while IFS= read -r line; do
   line="${line%%#*}"
   line="$(printf '%s' "$line" | tr -d '[:space:]')"
   [ -n "$line" ] || continue
-  ALLOWED="$ALLOWED$(normalize "$line") "
+  ALLOWED+=("$(normalize "$line")")
 done < "$ALLOWLIST"
 
 # Entries may end in `*` to allow a reviewed package family (e.g. `@img/sharp-libvips-*`).
 is_allowed() {
   local n entry
   n="$(normalize "$1")"
-  for entry in $ALLOWED; do
+  # Quoted array expansion: entries such as `foo-*` are never glob-expanded.
+  [ "${#ALLOWED[@]}" -gt 0 ] || return 1
+  for entry in "${ALLOWED[@]}"; do
     case "$entry" in
       *'*') case "$n" in "${entry%\*}"*) return 0 ;; esac ;;
       *) [ "$n" = "$entry" ] && return 0 ;;
@@ -62,20 +66,33 @@ is_allowed() {
   return 1
 }
 
-# Emit "name<TAB>version<TAB>license" rows.
-rows() {
-  if [ -n "$PY_JSON" ]; then
-    jq -r '.[] | [.Name, .Version, ((.License // "UNKNOWN") | tostring)] | @tsv' "$PY_JSON" || return 1
-  fi
-  if [ -n "$NODE_JSON" ]; then
-    # keys look like "name@1.2.3" or "@scope/name@1.2.3"; licenses is a string or an array
-    jq -r 'to_entries[] | (.key | capture("^(?<n>.+)@(?<v>[^@]+)$")) as $k
-           | [$k.n, $k.v, ((.value.licenses // "UNKNOWN") | if type == "array" then join(" AND ") else tostring end)]
-           | @tsv' "$NODE_JSON" || return 1
-  fi
+# Emit "name<TAB>version<TAB>license" rows for one input.
+py_rows() {
+  jq -r '.[] | [.Name, .Version, ((.License // "UNKNOWN") | tostring)] | @tsv' "$1"
+}
+node_rows() {
+  # keys look like "name@1.2.3" or "@scope/name@1.2.3"; licenses is a string or an array.
+  # A key that does not match becomes a row with license UNPARSEABLE so it fails loudly.
+  jq -r 'to_entries[]
+         | ([.key | capture("^(?<n>.+)@(?<v>[^@]+)$")] | first) as $k
+         | if $k == null then [.key, "?", "UNPARSEABLE"]
+           else [$k.n, $k.v, ((.value.licenses // "UNKNOWN") | if type == "array" then join(" AND ") else tostring end)]
+           end
+         | @tsv' "$1"
 }
 
-ALL_ROWS="$(rows)" || { echo "license-gate: failed to parse input JSON" >&2; exit 2; }
+ALL_ROWS=""
+add_rows() { # add_rows <kind> <file>
+  local out
+  out="$("$1_rows" "$2")" || { echo "license-gate: failed to parse $1 input JSON: $2" >&2; exit 2; }
+  if [ -z "$out" ]; then
+    echo "license-gate: $1 input lists zero packages: $2" >&2
+    exit 2
+  fi
+  ALL_ROWS="$ALL_ROWS$out"$'\n'
+}
+[ -z "$PY_JSON" ] || add_rows py "$PY_JSON"
+[ -z "$NODE_JSON" ] || add_rows node "$NODE_JSON"
 
 bad=0
 total=0
@@ -94,11 +111,11 @@ while IFS=$'\t' read -r name version license; do
       echo "LGPL not in allowlist: $name $version -> $license"
       bad=1
     fi
-  elif [ -z "$license" ] || printf '%s' "$license" | grep -qiE '^[[:space:]]*(UNKNOWN|UNLICENSED)?[[:space:]]*$|UNKNOWN'; then
+  elif [ -z "$license" ] || printf '%s' "$license" | grep -qiE '^[[:space:]]*(UNKNOWN|UNLICENSED)?[[:space:]]*$|UNKNOWN|UNPARSEABLE|Custom:'; then
     if is_allowed "$name"; then
-      echo "allowlisted UNKNOWN: $name $version -> $license"
+      echo "allowlisted unrecognised license: $name $version -> $license"
     else
-      echo "UNKNOWN license: $name $version -> $license"
+      echo "Unrecognised license (UNKNOWN/Custom/UNPARSEABLE): $name $version -> $license"
       bad=1
     fi
   fi
