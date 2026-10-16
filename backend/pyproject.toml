@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.20.0",
     "asyncpg>=0.32.0",
+    "celery>=5.6",
     "fastapi",
     "pydantic-settings",
     "redis>=8.1.0",
@@ -54,5 +55,9 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["src"]
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    # celery 5.6 result backend still calls redis-py's deprecated setex; remove once fixed upstream
+    "ignore:Call to deprecated setex:DeprecationWarning:celery.backends.redis",
+]
 markers = ["integration: needs Docker (testcontainers); deselect with -m \"not integration\""]
