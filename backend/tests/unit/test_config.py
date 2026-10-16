@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from pydantic import ValidationError
 
@@ -9,13 +11,6 @@ PROD_OK = {
     "PRODSIM_DATABASE_URL": "postgresql+asyncpg://u:p@db:5432/prodsim",
     "PRODSIM_VALKEY_URL": "redis://valkey:6379/0",
 }
-
-
-@pytest.fixture(autouse=True)
-def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for key in list(PROD_OK) + ["PRODSIM_CORS_ORIGINS"]:
-        monkeypatch.delenv(key, raising=False)
-    get_settings.cache_clear()
 
 
 def set_prod(monkeypatch: pytest.MonkeyPatch, **overrides: str | None) -> None:
@@ -94,3 +89,21 @@ def test_env_overrides_with_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_get_settings_is_cached() -> None:
     assert get_settings() is get_settings()
+
+
+def test_prod_validation_error_does_not_leak_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    secret = "topsecret-" + "x" * 30
+    set_prod(monkeypatch, PRODSIM_SECRET_KEY=secret, PRODSIM_DATABASE_URL=None)
+    with pytest.raises(ValidationError, match="database_url") as exc:
+        Settings()
+    assert secret not in str(exc.value)
+    assert secret not in repr(exc.value)
+    assert secret not in json.dumps(exc.value.errors(), default=str)
+
+
+def test_init_kwarg_secret_not_leaked_on_error() -> None:
+    secret = "kwarg-secret-" + "y" * 30
+    with pytest.raises(ValidationError) as exc:
+        Settings(environment="prod", secret_key=secret)  # pyright: ignore[reportArgumentType]
+    assert secret not in str(exc.value)
+    assert secret not in json.dumps(exc.value.errors(), default=str)
