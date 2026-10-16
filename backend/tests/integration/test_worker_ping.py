@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 from celery import Celery
+from celery.app.log import Logging
 from celery.contrib.testing.worker import start_worker
 from celery.signals import setup_logging, task_postrun
 
@@ -56,10 +57,26 @@ def test_ping_task_runs_on_worker(worker_app: Celery) -> None:
     assert result.get(timeout=10) == "pong"
 
 
-def test_setup_logging_signal_uses_prodsim_logging(valkey_url: str) -> None:
+@pytest.fixture
+def clean_setup_logging_signal(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    monkeypatch.setattr(Logging, "_setup", False)  # restored after the test
+    saved = setup_logging.receivers[:]
+    yield
+    setup_logging.receivers[:] = saved
+    setup_logging.sender_receivers_cache.clear()
+
+
+@pytest.mark.usefixtures("clean_setup_logging_signal")
+def test_celery_logging_setup_uses_prodsim_logging(valkey_url: str) -> None:
     app = create_celery_app(Settings(environment="test", valkey_url=valkey_url))
+    create_celery_app(Settings(environment="test", valkey_url=valkey_url))  # no duplicate receivers
     root = logging.getLogger()
     for h in [h for h in root.handlers if getattr(h, "_prodsim", False)]:
         root.removeHandler(h)
-    setup_logging.send(sender=app, loglevel=logging.INFO, logfile=None, format="", colorize=False)
-    assert any(getattr(h, "_prodsim", False) for h in root.handlers)
+    handlers_before = root.handlers[:]
+    # Celery's real path: emits setup_logging with sender=None
+    app.log.setup_logging_subsystem(loglevel=logging.INFO)
+    prodsim = [h for h in root.handlers if getattr(h, "_prodsim", False)]
+    assert len(prodsim) == 1
+    assert root.handlers == [*handlers_before, *prodsim]  # celery added no handler of its own
+    assert len(setup_logging.receivers) == 1

@@ -30,7 +30,9 @@ def create_celery_app(settings: Settings) -> Celery:
         # Connecting this signal stops Celery from installing its own log handlers.
         configure_logging(settings)
 
-    setup_logging.connect(_setup_logging, sender=app, weak=False)
+    # Celery emits setup_logging with sender=None, so no sender filter. The fixed dispatch_uid
+    # keeps repeated factory calls from stacking receivers (the latest settings win).
+    setup_logging.connect(_setup_logging, weak=False, dispatch_uid="prodsim.configure_logging")
     return app
 
 
