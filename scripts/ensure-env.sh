@@ -8,6 +8,18 @@ ENV_FILE="$DIR/.env"
 EXAMPLE="$DIR/.env.example"
 
 if [ -f "$ENV_FILE" ]; then
+  # An existing .env is never overwritten, but refuse to run with placeholder values.
+  placeholders="$(sed -nE 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)=change-me.*$/\1/p' "$ENV_FILE")"
+  if [ -n "$placeholders" ]; then
+    {
+      echo "ensure-env: $ENV_FILE still contains placeholder values (=change-me) for:"
+      while IFS= read -r name; do echo "  $name"; done <<<"$placeholders"
+      echo "Set real values in that file (e.g. \`openssl rand -hex 32\`), or delete it and run"
+      echo "\`make up\` again to generate one. Note: POSTGRES_PASSWORD only applies to a fresh"
+      echo "database volume (\`make clean-data\` deletes the existing one)."
+    } >&2
+    exit 1
+  fi
   exit 0
 fi
 
