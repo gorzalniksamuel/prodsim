@@ -16,10 +16,12 @@ publicly.
 
 ## Supported versions
 
-| Version        | Supported                    |
-| -------------- | ---------------------------- |
-| `main` branch  | Yes                          |
-| Pre-release (< 0.1) | No, no security fixes   |
-| Latest release | Yes, once releases exist     |
+ProdSim is pre-release: there are no published releases yet. Security fixes are made
+only on the latest commit of the `main` branch.
 
-This table will be updated as releases are published.
+| Version                      | Supported |
+| ---------------------------- | --------- |
+| Latest commit on `main`      | Yes       |
+| Older commits                | No        |
+
+This table will be updated when the first release is published.

@@ -1,3 +1,9 @@
+> **Archived prototype — not maintained.**
+> This directory holds the original UI prototype that preceded ProdSim. Its simulation
+> results are hard-coded demo data, not real computations. It is kept for reference
+> only, receives no fixes, and will be replaced by the plant and process modeling epic
+> (E3). The instructions below are the prototype's original README.
+
 <div align="center">
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>

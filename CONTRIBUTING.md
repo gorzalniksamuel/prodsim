@@ -21,8 +21,10 @@ cd prodsim
 make dev
 ```
 
-`make dev` starts the stack with the `dev` profile (hot reload, seed data). See the
-[README](README.md) for the quick start.
+`make dev` builds and starts the same stack as `make up`, adding the
+`deploy/compose/compose.dev.yaml` overlay, which also publishes the API (port 8000), the
+database (5432) and Valkey (6379) on `127.0.0.1` so local tools can reach them. There is
+no hot reload or seed data yet. See the [README](README.md) for the quick start.
 
 ## Test-driven development is required
 
