@@ -1,0 +1,12 @@
+# Development overlay: use together with compose.yaml (`make dev`).
+# Publishes the API and backing services on localhost only.
+services:
+  api:
+    ports:
+      - "127.0.0.1:8000:8000"
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"
+  valkey:
+    ports:
+      - "127.0.0.1:6379:6379"

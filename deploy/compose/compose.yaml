@@ -1,0 +1,103 @@
+name: prodsim
+
+x-prodsim-env: &prodsim-env
+  PRODSIM_ENVIRONMENT: ${PRODSIM_ENVIRONMENT:-prod}
+  PRODSIM_LOG_LEVEL: ${PRODSIM_LOG_LEVEL:-INFO}
+  PRODSIM_SECRET_KEY: ${PRODSIM_SECRET_KEY:?set PRODSIM_SECRET_KEY in deploy/compose/.env (run make up)}
+  PRODSIM_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-prodsim}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/compose/.env (run make up)}@db:5432/${POSTGRES_DB:-prodsim}
+  PRODSIM_VALKEY_URL: redis://valkey:6379/0
+
+x-backend: &backend
+  build:
+    context: ../../backend
+  image: prodsim-backend:dev
+  environment: *prodsim-env
+
+services:
+  db:
+    image: timescale/timescaledb:latest-pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-prodsim}
+      POSTGRES_DB: ${POSTGRES_DB:-prodsim}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/compose/.env (run make up)}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    <<: *backend
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/api/v1/health/ready', timeout=4)"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  worker:
+    <<: *backend
+    command: ["celery", "-A", "prodsim.worker.app:celery_app", "worker", "--loglevel=INFO"]
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: ../../apps/web
+      args:
+        API_INTERNAL_URL: http://api:8000
+    image: prodsim-web:dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  db-data:
+  valkey-data:
