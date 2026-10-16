@@ -14,6 +14,12 @@ _MIN_PROD_SECRET_LENGTH = 32
 _PROD_REQUIRED = ("secret_key", "database_url", "valkey_url")
 _PLACEHOLDER_SECRET = "change-me"  # noqa: S105
 _MASKED_FIELDS = ("secret_key", "database_url", "valkey_url")
+_ENV_PREFIX = "PRODSIM_"
+
+
+def _env_name(field: str) -> str:
+    """Environment variable that sets `field` (matches `env_prefix` below)."""
+    return f"{_ENV_PREFIX}{field.upper()}"
 
 
 def _generate_secret() -> SecretStr:
@@ -45,7 +51,7 @@ class _MaskSecretSource(PydanticBaseSettingsSource):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="PRODSIM_", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix=_ENV_PREFIX, extra="ignore")
 
     environment: Literal["dev", "test", "prod"] = "dev"
     secret_key: SecretStr = Field(default_factory=_generate_secret)
@@ -75,14 +81,15 @@ class Settings(BaseSettings):
     def _validate_prod(self) -> Self:
         if self.environment != "prod":
             return self
-        missing = [f for f in _PROD_REQUIRED if f not in self.model_fields_set]
+        missing = [_env_name(f) for f in _PROD_REQUIRED if f not in self.model_fields_set]
         if missing:
-            raise ValueError(f"required in prod: {', '.join(missing)}")
+            raise ValueError(f"required in prod, set: {', '.join(missing)}")
         secret = self.secret_key.get_secret_value()
         if len(secret) < _MIN_PROD_SECRET_LENGTH or secret.lower() == _PLACEHOLDER_SECRET:
             raise ValueError(
-                f"secret_key must be at least {_MIN_PROD_SECRET_LENGTH} characters "
-                "and not the placeholder in prod"
+                f"{_env_name('secret_key')} must be at least {_MIN_PROD_SECRET_LENGTH} "
+                f"characters and not the placeholder {_PLACEHOLDER_SECRET!r} in prod "
+                "(generate one with `openssl rand -hex 32`)"
             )
         return self
 

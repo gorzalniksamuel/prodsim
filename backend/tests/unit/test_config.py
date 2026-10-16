@@ -23,13 +23,13 @@ def set_prod(monkeypatch: pytest.MonkeyPatch, **overrides: str | None) -> None:
 
 def test_prod_requires_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     set_prod(monkeypatch, PRODSIM_SECRET_KEY=None)
-    with pytest.raises(ValidationError, match="secret_key"):
+    with pytest.raises(ValidationError, match="PRODSIM_SECRET_KEY"):
         Settings()
 
 
 def test_prod_rejects_short_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     set_prod(monkeypatch, PRODSIM_SECRET_KEY="s" * 31)
-    with pytest.raises(ValidationError, match="secret_key"):
+    with pytest.raises(ValidationError, match="PRODSIM_SECRET_KEY"):
         Settings()
 
 
@@ -38,7 +38,7 @@ def test_prod_rejects_placeholder_secret_key(
     monkeypatch: pytest.MonkeyPatch, placeholder: str
 ) -> None:
     set_prod(monkeypatch, PRODSIM_SECRET_KEY=placeholder)
-    with pytest.raises(ValidationError, match="secret_key"):
+    with pytest.raises(ValidationError, match="PRODSIM_SECRET_KEY"):
         Settings()
 
 
@@ -51,13 +51,13 @@ def test_prod_accepts_valid_configuration(monkeypatch: pytest.MonkeyPatch) -> No
 
 def test_prod_requires_database_url(monkeypatch: pytest.MonkeyPatch) -> None:
     set_prod(monkeypatch, PRODSIM_DATABASE_URL=None)
-    with pytest.raises(ValidationError, match="database_url"):
+    with pytest.raises(ValidationError, match="PRODSIM_DATABASE_URL"):
         Settings()
 
 
 def test_prod_requires_valkey_url(monkeypatch: pytest.MonkeyPatch) -> None:
     set_prod(monkeypatch, PRODSIM_VALKEY_URL=None)
-    with pytest.raises(ValidationError, match="valkey_url"):
+    with pytest.raises(ValidationError, match="PRODSIM_VALKEY_URL"):
         Settings()
 
 
@@ -94,7 +94,7 @@ def test_get_settings_is_cached() -> None:
 def test_prod_validation_error_does_not_leak_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     secret = "topsecret-" + "x" * 30
     set_prod(monkeypatch, PRODSIM_SECRET_KEY=secret, PRODSIM_DATABASE_URL=None)
-    with pytest.raises(ValidationError, match="database_url") as exc:
+    with pytest.raises(ValidationError, match="PRODSIM_DATABASE_URL") as exc:
         Settings()
     assert secret not in str(exc.value)
     assert secret not in repr(exc.value)
@@ -116,7 +116,7 @@ def test_prod_validation_error_does_not_leak_dsn_password(
     password = "dsn-pw-" + "z" * 20
     dsn = f"postgresql+asyncpg://u:{password}@db:5432/prodsim"
     set_prod(monkeypatch, **{f"PRODSIM_{field}": dsn}, PRODSIM_SECRET_KEY=None)
-    with pytest.raises(ValidationError, match="secret_key") as exc:
+    with pytest.raises(ValidationError, match="PRODSIM_SECRET_KEY") as exc:
         Settings()
     assert password not in str(exc.value)
     assert password not in repr(exc.value)
