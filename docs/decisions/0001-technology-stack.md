@@ -30,6 +30,7 @@ no GPL/AGPL in the shipped product.
 | ML | MLflow 3 (tracking + registry on Postgres), scikit-learn, optional PyTorch, ONNX Runtime | DVC, lakeFS | App-managed datasets: immutable snapshots + content hash |
 | LLM providers | pydantic-ai 2 (`/pydantic/pydantic-ai`) | LiteLLM `/websites/litellm_ai`, direct SDKs | Typed outputs; OpenAI, Anthropic, Azure, Bedrock, OpenAI-compatible (Ollama/vLLM) |
 | Tooling | uv, ruff, pyright (strict), pytest + pytest-asyncio + httpx ASGITransport + testcontainers | mypy, ty (0.0.x) | Fast, standard |
+| Settings | pydantic-settings (`/pydantic/pydantic-settings`) | — | Typed env config, FastAPI-recommended |
 | Observability | structlog JSON, OpenTelemetry (OTLP, opt-in), prometheus_client | — | On-prem friendly, customer-owned collectors |
 
 ### Frontend
