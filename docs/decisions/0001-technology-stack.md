@@ -60,5 +60,19 @@ no GPL/AGPL in the shipped product.
 7. Job cancellation: cooperative checkpoints first (flag checked in SimPy/CP-SAT
    callbacks), `terminate` as fallback; `worker_prefetch_multiplier=1`, `acks_late`.
 8. Pin fast-moving deps (pydantic-ai 2, openapi-fetch 0.x); Renovate for updates.
-9. CI license gate: `pip-licenses --fail-on="GPL;AGPL"` and `license-checker --failOn GPL`
-   (with explicit allowlist for reviewed LGPL packages).
+9. CI license gate: `scripts/license-gate.sh` over `pip-licenses` and
+   `license-checker-rseidelsohn` production output. GPL/AGPL always fail; LGPL, unknown
+   and custom licenses fail unless listed in `licenses-allowlist.txt` (reviewed packages
+   only, see below).
+
+## Reviewed LGPL dependencies
+
+Each entry in `licenses-allowlist.txt` must be listed here. All are used unmodified,
+installed from their public registries (not vendored) and loaded dynamically at runtime;
+their license texts ship with the installed packages.
+
+| Package | License | Where | Why it is acceptable |
+| --- | --- | --- | --- |
+| `@img/sharp-libvips-*` | LGPL-3.0-or-later | Web image (`node_modules` of the Next.js standalone output) | Prebuilt libvips shared library pulled in by `sharp`, an optional production dependency of `next`. ProdSim sets `images.unoptimized: true` and uses no `next/image`, but Next.js output tracing still copies `sharp` into `.next/standalone`, so it ships. Unmodified, dynamically loaded by `sharp`. |
+| `asyncua` | LGPL-3.0 | Backend (later epic, E4) | OPC UA client; not used in E0. Will be used unmodified as a normal Python dependency. |
+| `ldap3` | LGPL-3.0 | Backend (later epic, E1+) | LDAP client; not used in E0. Will be used unmodified as a normal Python dependency. |

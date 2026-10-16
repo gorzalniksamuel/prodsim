@@ -9,6 +9,8 @@ const apiInternalUrl = process.env.API_INTERNAL_URL ?? "http://localhost:8000";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // The app uses no next/image, so the sharp-based image optimizer is switched off.
+  images: { unoptimized: true },
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${apiInternalUrl}/api/:path*` }];
   },

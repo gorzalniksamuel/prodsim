@@ -4,7 +4,9 @@
 # Neither package below is used in E0; they are pre-reviewed for later epics.
 asyncua  # LGPL-3.0, OPC UA client; used unmodified, not vendored
 ldap3    # LGPL-3.0, LDAP client; used unmodified, not vendored
-# sharp's prebuilt libvips binaries (optional dependency of Next.js, used for image
-# optimization). LGPL-3.0-or-later, consumed unmodified from the npm registry as a
-# dynamically loaded shared library; never vendored or modified by ProdSim.
+# sharp's prebuilt libvips binaries. sharp is an optional production dependency of
+# Next.js; the app sets `images.unoptimized: true`, but Next.js output tracing still
+# copies sharp into `.next/standalone`, so it ships in the web image. LGPL-3.0-or-later,
+# consumed unmodified from the npm registry as a dynamically loaded shared library;
+# never vendored or modified by ProdSim. Reviewed in ADR 0001 ("Reviewed LGPL dependencies").
 @img/sharp-libvips-*  # LGPL-3.0-or-later, unmodified prebuilt libvips
