@@ -19,7 +19,7 @@ function run(cmd, args, cwd = root) {
   const res = spawnSync(cmd, args, { cwd, stdio: "inherit" });
   if (res.status !== 0) {
     console.error(`command failed: ${cmd} ${args.join(" ")}`);
-    process.exit(res.status ?? 1);
+    throw new Error("generation failed");
   }
 }
 
@@ -32,7 +32,7 @@ try {
   mkdirSync(dirname(target.spec), { recursive: true });
   mkdirSync(dirname(target.types), { recursive: true });
   run("uv", ["run", "--project", backend, "python", "-m", "prodsim.api.openapi_export", target.spec]);
-  run("npx", ["openapi-typescript", target.spec, "-o", target.types]);
+  run(join(root, "node_modules", ".bin", "openapi-typescript"), [target.spec, "-o", target.types]);
 
   if (check) {
     const drift = Object.keys(committed).filter((k) => {
@@ -47,9 +47,10 @@ try {
         `API client is out of date (${drift.map((k) => committed[k]).join(", ")}). ` +
           "Run `npm run api:generate` and commit the result.",
       );
-      process.exit(1);
+      process.exitCode = 1;
+    } else {
+      console.log("API client is up to date.");
     }
-    console.log("API client is up to date.");
   }
 } finally {
   if (tmp) rmSync(tmp, { recursive: true, force: true });
