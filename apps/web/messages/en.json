@@ -1,0 +1,13 @@
+{
+  "system": {
+    "title": "System status",
+    "version": "Version {version}",
+    "failingChecks": "Failing checks: {names}",
+    "status": {
+      "loading": "Checking API…",
+      "online": "API online",
+      "degraded": "API degraded",
+      "unreachable": "API unreachable"
+    }
+  }
+}
