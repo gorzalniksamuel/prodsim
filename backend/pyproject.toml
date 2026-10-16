@@ -5,8 +5,12 @@ description = "ProdSim backend: industrial simulation, scheduling and analytics 
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "alembic>=1.20.0",
+    "asyncpg>=0.32.0",
     "fastapi",
     "pydantic-settings",
+    "redis>=8.1.0",
+    "sqlalchemy[asyncio]>=2.1.4",
     "uvicorn[standard]",
 ]
 
@@ -50,3 +54,4 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["src"]
 filterwarnings = ["error"]
+markers = ["integration: needs Docker (testcontainers); deselect with -m \"not integration\""]
