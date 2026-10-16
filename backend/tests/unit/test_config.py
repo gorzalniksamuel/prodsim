@@ -107,3 +107,24 @@ def test_init_kwarg_secret_not_leaked_on_error() -> None:
         Settings(environment="prod", secret_key=secret)  # pyright: ignore[reportArgumentType]
     assert secret not in str(exc.value)
     assert secret not in json.dumps(exc.value.errors(), default=str)
+
+
+@pytest.mark.parametrize("field", ["DATABASE_URL", "VALKEY_URL"])
+def test_prod_validation_error_does_not_leak_dsn_password(
+    monkeypatch: pytest.MonkeyPatch, field: str
+) -> None:
+    password = "dsn-pw-" + "z" * 20
+    dsn = f"postgresql+asyncpg://u:{password}@db:5432/prodsim"
+    set_prod(monkeypatch, **{f"PRODSIM_{field}": dsn}, PRODSIM_SECRET_KEY=None)
+    with pytest.raises(ValidationError, match="secret_key") as exc:
+        Settings()
+    assert password not in str(exc.value)
+    assert password not in repr(exc.value)
+    assert password not in json.dumps(exc.value.errors(), default=str)
+
+
+def test_dsn_values_remain_usable_when_masked(monkeypatch: pytest.MonkeyPatch) -> None:
+    dsn = "postgresql+asyncpg://u:pw@db:5432/prodsim"
+    set_prod(monkeypatch, PRODSIM_DATABASE_URL=dsn)
+    assert Settings().database_url == dsn
+    assert Settings(database_url=dsn).database_url == dsn  # pyright: ignore[reportCallIssue]

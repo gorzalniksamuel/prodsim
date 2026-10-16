@@ -4,7 +4,7 @@ import secrets
 from functools import lru_cache
 from typing import Any, Literal, Self
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
@@ -13,6 +13,7 @@ _DEFAULT_VALKEY_URL = "redis://localhost:6379/0"
 _MIN_PROD_SECRET_LENGTH = 32
 _PROD_REQUIRED = ("secret_key", "database_url", "valkey_url")
 _PLACEHOLDER_SECRET = "change-me"  # noqa: S105
+_MASKED_FIELDS = ("secret_key", "database_url", "valkey_url")
 
 
 def _generate_secret() -> SecretStr:
@@ -20,10 +21,11 @@ def _generate_secret() -> SecretStr:
 
 
 class _MaskSecretSource(PydanticBaseSettingsSource):
-    """Wraps a settings source so `secret_key` is a SecretStr before validation.
+    """Wraps a settings source so secret-bearing values are SecretStr before validation.
 
-    Pydantic echoes the raw input in ValidationError messages; masking it here keeps the
-    secret out of startup errors and logs.
+    Pydantic echoes the raw input in ValidationError messages; masking it here keeps
+    `secret_key` and DSN passwords (`database_url`, `valkey_url`) out of startup errors and
+    logs. The DSN fields stay `str`; a before-validator unwraps the SecretStr.
     """
 
     def __init__(self, inner: PydanticBaseSettingsSource) -> None:
@@ -35,9 +37,10 @@ class _MaskSecretSource(PydanticBaseSettingsSource):
 
     def __call__(self) -> dict[str, Any]:
         values = self._inner()
-        secret = values.get("secret_key")
-        if isinstance(secret, str):
-            values["secret_key"] = SecretStr(secret)
+        for name in _MASKED_FIELDS:
+            value = values.get(name)
+            if isinstance(value, str):
+                values[name] = SecretStr(value)
         return values
 
 
@@ -62,6 +65,11 @@ class Settings(BaseSettings):
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         sources = (init_settings, env_settings, dotenv_settings, file_secret_settings)
         return tuple(_MaskSecretSource(source) for source in sources)
+
+    @field_validator("database_url", "valkey_url", mode="before")
+    @classmethod
+    def _unwrap_dsn(cls, value: object) -> object:
+        return value.get_secret_value() if isinstance(value, SecretStr) else value
 
     @model_validator(mode="after")
     def _validate_prod(self) -> Self:
