@@ -1,0 +1,10 @@
+# Reviewed LGPL packages that may ship (format: `package-name  # reason`).
+# Only LGPL and UNKNOWN-licensed packages can be allowlisted; GPL/AGPL never can.
+# Per ADR 0001, LGPL deps are used unmodified, not vendored, and their license texts shipped.
+# Neither package below is used in E0; they are pre-reviewed for later epics.
+asyncua  # LGPL-3.0, OPC UA client; used unmodified, not vendored
+ldap3    # LGPL-3.0, LDAP client; used unmodified, not vendored
+# sharp's prebuilt libvips binaries (optional dependency of Next.js, used for image
+# optimization). LGPL-3.0-or-later, consumed unmodified from the npm registry as a
+# dynamically loaded shared library; never vendored or modified by ProdSim.
+@img/sharp-libvips-*  # LGPL-3.0-or-later, unmodified prebuilt libvips

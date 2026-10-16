@@ -1,0 +1,27 @@
+name: Commercial license inquiry
+description: Ask about using ProdSim beyond the PolyForm Noncommercial license
+title: "Commercial license inquiry"
+labels: [licensing]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue is public. Do not post confidential business details; ask for a private
+        channel below and the maintainer will follow up. See COMMERCIAL-LICENSE.md.
+  - type: input
+    id: organization
+    attributes:
+      label: Organization (optional)
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Intended use
+      description: How would you use ProdSim (internal, hosted service, embedded in a product)?
+    validations:
+      required: true
+  - type: checkboxes
+    id: private-channel
+    attributes:
+      label: Contact
+      options:
+        - label: Please reach out to me privately to continue.

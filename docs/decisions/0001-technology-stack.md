@@ -45,6 +45,7 @@ no GPL/AGPL in the shipped product.
 | API client | openapi-typescript + openapi-fetch + openapi-react-query | Orval, Hey API | Types only, minimal runtime |
 | Testing | Vitest, Testing Library, MSW 2, Playwright | — | Typed mocks from the same OpenAPI types |
 | i18n | next-intl 4, locale from user profile (DE/EN) | — | First-class App Router support |
+| CLA signing | CLA Assistant Lite (`contributor-assistant/github-action` v2.6.1, pinned by SHA); signatures in branch `cla-signatures` | Hosted cla-assistant.io (central database, external service) | No external service; signatures versioned in the repo. Upstream is archived, so fork or replace if it breaks |
 
 ## Consequences / risks
 
