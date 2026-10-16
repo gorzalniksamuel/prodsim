@@ -56,11 +56,10 @@ async def test_ready_503_when_valkey_unreachable(postgres_url: str, closed_valke
     assert live.status_code == 200
 
 
-async def test_ready_returns_within_timeout() -> None:
-    # TEST-NET-1 address: connection attempts hang rather than being refused.
+async def test_ready_returns_within_timeout(silent_server: int) -> None:
     settings = make_settings(
-        f"postgresql+asyncpg://prodsim:{DB_PASSWORD}@192.0.2.1:5432/prodsim",
-        "redis://192.0.2.1:6379/0",
+        f"postgresql+asyncpg://prodsim:{DB_PASSWORD}@127.0.0.1:{silent_server}/prodsim",
+        f"redis://127.0.0.1:{silent_server}/0",
     )
     async with running_client(settings) as client:
         start = time.monotonic()
@@ -68,6 +67,10 @@ async def test_ready_returns_within_timeout() -> None:
         elapsed = time.monotonic() - start
     assert response.status_code == 503
     assert elapsed < 3
+    checks = by_name(response.json())
+    for name in ("database", "valkey"):
+        assert checks[name]["ok"] is False
+        assert str(checks[name]["detail"]).startswith("timeout")
 
 
 async def test_ready_does_not_leak_db_password(valkey_url: str, closed_database_url: str) -> None:

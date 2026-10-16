@@ -1,4 +1,8 @@
-"""Async Alembic environment. The database URL comes from prodsim Settings."""
+"""Async Alembic environment. The database URL comes from prodsim Settings.
+
+Settings() is built in full, so the process needs a complete PRODSIM_* environment
+(in prod: PRODSIM_SECRET_KEY, PRODSIM_DATABASE_URL and PRODSIM_VALKEY_URL).
+"""
 
 import asyncio
 from logging.config import fileConfig
@@ -11,7 +15,8 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from prodsim.core.config import Settings
 
 config = context.config
-if config.config_file_name is not None:
+# Programmatic callers (tests) set attributes["configure_logger"]=False to keep global logging.
+if config.config_file_name is not None and config.attributes.get("configure_logger", True):
     fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = None

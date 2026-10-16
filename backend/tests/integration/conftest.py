@@ -1,3 +1,4 @@
+import asyncio
 import socket
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
@@ -60,3 +61,22 @@ async def running_client(settings: Settings) -> AsyncIterator[httpx.AsyncClient]
         httpx.AsyncClient(transport=transport, base_url="http://testserver") as client,
     ):
         yield client
+
+
+@pytest.fixture
+async def silent_server() -> AsyncIterator[int]:
+    """TCP listener that accepts connections and never replies."""
+    held: list[asyncio.StreamWriter] = []
+
+    async def handle(_: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        held.append(writer)
+
+    server = await asyncio.start_server(handle, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    try:
+        yield port
+    finally:
+        for w in held:
+            w.close()
+        server.close()
+        await server.wait_closed()
