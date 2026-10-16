@@ -31,7 +31,8 @@ def create_celery_app(settings: Settings) -> Celery:
         configure_logging(settings)
 
     # Celery emits setup_logging with sender=None, so no sender filter. The fixed dispatch_uid
-    # keeps repeated factory calls from stacking receivers (the latest settings win).
+    # keeps repeated factory calls from stacking receivers: Celery ignores a connect whose
+    # dispatch_uid is already registered, so the FIRST factory call's settings win.
     setup_logging.connect(_setup_logging, weak=False, dispatch_uid="prodsim.configure_logging")
     return app
 
