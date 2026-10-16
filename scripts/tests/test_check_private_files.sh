@@ -25,9 +25,9 @@ track() { # track <path>...
   done
 }
 
-run_check() { # sets OUT and RC
+run_check() { # run_check [subdir] ; sets OUT and RC
   set +e
-  OUT="$(cd "$TMP/repo" && bash "$SCRIPT" 2>&1)"
+  OUT="$(cd "$TMP/repo/${1:-}" && bash "$SCRIPT" 2>&1)"
   RC=$?
   set -e
 }
@@ -35,7 +35,8 @@ run_check() { # sets OUT and RC
 new_repo; track README.md; run_check
 if [ "$RC" -eq 0 ]; then ok "clean repo exits 0"; else bad "clean repo exits 0 (rc=$RC: $OUT)"; fi
 
-for f in CLAUDE.md .claude/settings.json docs/superpowers/specs/x.md .env apps/web/.env.local; do
+for f in CLAUDE.md .claude/settings.json docs/superpowers/specs/x.md .env apps/web/.env.local \
+  apps/web/CLAUDE.md backend/.claude/settings.json .superpowers/sdd/x.md backend/.superpowers/x.md; do
   new_repo; track README.md "$f"; run_check
   if [ "$RC" -eq 1 ] && printf '%s' "$OUT" | grep -qF -- "$f"; then
     ok "flags $f"
@@ -46,5 +47,28 @@ done
 
 new_repo; track README.md deploy/compose/.env.example; run_check
 if [ "$RC" -eq 0 ]; then ok "allows .env.example"; else bad "allows .env.example (rc=$RC: $OUT)"; fi
+
+# Run from a subdirectory: must still see files at the repo root.
+new_repo; track README.md CLAUDE.md backend/app.py; run_check backend
+if [ "$RC" -eq 1 ] && printf '%s' "$OUT" | grep -qF -- "CLAUDE.md"; then
+  ok "flags root CLAUDE.md when run from a subdirectory"
+else
+  bad "flags root CLAUDE.md when run from a subdirectory (rc=$RC: $OUT)"
+fi
+
+new_repo; track README.md backend/app.py; run_check backend
+if [ "$RC" -eq 0 ]; then ok "clean repo from a subdirectory exits 0"; else bad "clean repo from a subdirectory exits 0 (rc=$RC: $OUT)"; fi
+
+# Outside any git repository: must fail loudly, not pass silently.
+mkdir -p "$TMP/norepo"
+set +e
+OUT="$(cd "$TMP/norepo" && GIT_CEILING_DIRECTORIES="$TMP" bash "$SCRIPT" 2>&1)"
+RC=$?
+set -e
+if [ "$RC" -eq 2 ] && [ -n "$OUT" ]; then
+  ok "outside a git repo exits 2 with a message"
+else
+  bad "outside a git repo exits 2 with a message (rc=$RC: $OUT)"
+fi
 
 exit "$fail"
