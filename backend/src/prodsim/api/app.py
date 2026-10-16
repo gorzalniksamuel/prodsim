@@ -6,13 +6,16 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import prodsim
+from prodsim.api.middleware import RequestIdMiddleware
 from prodsim.api.routes import health, meta
 from prodsim.core.config import Settings, get_settings
 from prodsim.core.db import create_engine
+from prodsim.core.logging import configure_logging
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
+    configure_logging(settings)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
@@ -39,6 +42,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+
+    # Added last so it is outermost: every request, including CORS preflights, is logged.
+    app.add_middleware(RequestIdMiddleware)
 
     api_v1 = APIRouter(prefix="/api/v1")
     api_v1.include_router(health.router)
