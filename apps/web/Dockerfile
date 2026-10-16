@@ -19,9 +19,12 @@ FROM node:24-alpine AS runtime
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 RUN addgroup -S -g 10001 nextjs && adduser -S -u 10001 -G nextjs nextjs
 WORKDIR /app
-COPY --from=builder --chown=nextjs:nextjs /app/public ./public
-COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
+# Application files stay root-owned: the runtime user cannot modify code.
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+# Only the Next.js cache directory is writable at runtime.
+RUN mkdir -p .next/cache && chown nextjs:nextjs .next/cache
 USER 10001:10001
 EXPOSE 3000
 CMD ["node", "server.js"]

@@ -13,13 +13,14 @@ COPY src ./src
 COPY alembic ./alembic
 COPY alembic.ini ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+    uv sync --frozen --no-dev --no-editable
 
 FROM python:3.13-slim AS runtime
 RUN groupadd --system --gid 10001 prodsim \
     && useradd --system --uid 10001 --gid prodsim --home-dir /app --shell /usr/sbin/nologin prodsim
 WORKDIR /app
-COPY --from=builder --chown=prodsim:prodsim /app /app
+# Application files stay root-owned: the runtime user cannot modify code.
+COPY --from=builder /app /app
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 USER 10001:10001
 EXPOSE 8000

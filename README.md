@@ -40,7 +40,8 @@ make up
 Then open <http://localhost:3000>. The first `make up` creates `deploy/compose/.env` with
 freshly generated secrets (it never overwrites an existing one). `make smoke` checks the
 stack end to end, `make e2e` runs the browser tests against it, `make dev` also publishes
-the API on <http://localhost:8000>, and `make down` removes the stack and its data.
+the API on <http://localhost:8000>, `make down` stops the stack but keeps your data, and `make clean-data` stops it and deletes the
+database volumes.
 
 ## Architecture
 

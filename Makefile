@@ -2,7 +2,7 @@ COMPOSE_DIR := deploy/compose
 COMPOSE     := docker compose -f $(COMPOSE_DIR)/compose.yaml
 COMPOSE_DEV := $(COMPOSE) -f $(COMPOSE_DIR)/compose.dev.yaml
 
-.PHONY: up down logs dev test lint e2e smoke api-generate env
+.PHONY: up down clean-data logs dev test lint e2e smoke api-generate env
 
 env:
 	@./scripts/ensure-env.sh
@@ -11,8 +11,12 @@ env:
 up: env
 	$(COMPOSE) up -d --build --wait --wait-timeout 300
 
-## Stop the stack and remove its volumes
+## Stop and remove the containers; named volumes (database, valkey) are kept
 down:
+	$(COMPOSE_DEV) down --remove-orphans
+
+## DESTRUCTIVE: stop the stack and delete its volumes (all database data)
+clean-data:
 	$(COMPOSE_DEV) down -v --remove-orphans
 
 logs:

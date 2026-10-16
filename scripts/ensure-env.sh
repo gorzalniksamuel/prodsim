@@ -16,8 +16,17 @@ secret="$(openssl rand -hex 32)"
 dbpass="$(openssl rand -hex 24)"
 
 umask 077
+# Write to a temp file first so an interrupted run never leaves a partial .env.
+tmp="$(mktemp "$DIR/.env.XXXXXX")"
+trap 'rm -f "$tmp"' EXIT
 # hex output is safe in sed replacement text and in a postgres URL.
 sed -e "s/^PRODSIM_SECRET_KEY=change-me\$/PRODSIM_SECRET_KEY=$secret/" \
     -e "s/^POSTGRES_PASSWORD=change-me\$/POSTGRES_PASSWORD=$dbpass/" \
-    "$EXAMPLE" > "$ENV_FILE"
+    "$EXAMPLE" > "$tmp"
+if grep -q '^[A-Z_]*=change-me' "$tmp"; then
+  echo "ensure-env: placeholder still present after substitution (CRLF in .env.example?)" >&2
+  exit 1
+fi
+mv "$tmp" "$ENV_FILE"
+trap - EXIT
 echo "Created $ENV_FILE with generated secrets (never commit it)."

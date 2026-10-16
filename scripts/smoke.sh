@@ -25,7 +25,7 @@ on_exit() {
     compose logs --tail=40 >&2 || true
   fi
   if [ "$TEARDOWN" = "1" ]; then
-    compose down -v --remove-orphans >&2 || true
+    compose down -v --remove-orphans >&2 || true  # teardown flag (CI): destructive on purpose
   fi
   exit "$status"
 }
@@ -41,6 +41,10 @@ for svc in db valkey api worker web; do
   state="$(compose ps --format '{{.State}}' "$svc")"
   [ "$state" = "running" ] || fail "$svc is '$state', expected running"
 done
+for svc in db valkey api worker web; do
+  health="$(compose ps --format '{{.Health}}' "$svc")"
+  [ "$health" = "healthy" ] || fail "$svc health is '$health', expected healthy"
+done
 migrate_cid="$(compose ps -a -q migrate)"
 [ -n "$migrate_cid" ] || fail "migrate container not found"
 migrate_exit="$(docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' "$migrate_cid")"
@@ -51,6 +55,15 @@ for svc in api web worker; do
   uid="$(compose exec -T "$svc" id -u | tr -d '\r')"
   [ "$uid" != "0" ] || fail "$svc runs as root"
   echo "$svc uid=$uid"
+done
+
+echo "==> application code is read-only for the runtime user"
+for pair in "api:/app/src" "worker:/app/src" "web:/app"; do
+  svc="${pair%%:*}"; dir="${pair#*:}"
+  if compose exec -T "$svc" sh -c "touch $dir/.write-test" 2>/dev/null; then
+    fail "$svc can write to $dir"
+  fi
+  echo "$svc: $dir not writable"
 done
 
 echo "==> http checks via web ($WEB_URL)"
