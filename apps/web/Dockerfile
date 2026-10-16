@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1
-FROM node:24-alpine AS deps
+FROM node:25-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 # devDependencies are required: the build imports shadcn/tailwind CSS from them.
 RUN --mount=type=cache,target=/root/.npm npm ci
 
-FROM node:24-alpine AS builder
+FROM node:25-alpine AS builder
 WORKDIR /app
 # Next.js evaluates rewrites at BUILD time and bakes them into the standalone server.
 ARG API_INTERNAL_URL=http://api:8000
@@ -15,7 +15,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-FROM node:24-alpine AS runtime
+FROM node:25-alpine AS runtime
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 RUN addgroup -S -g 10001 nextjs && adduser -S -u 10001 -G nextjs nextjs
 WORKDIR /app
